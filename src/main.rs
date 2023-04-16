@@ -53,6 +53,6 @@ fn search_db(client: &mut Client) {
     for row in client.query("select distinct county, state from chain where chain = $1", &[&choice.as_str()]).unwrap() {
         let county: String = row.get(0);
         let state: String = row.get(1);
-        println!("State: {}, County: {}", state, county);
+        println!("{}, {}", county, state);
     }
 }
