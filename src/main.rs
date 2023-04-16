@@ -37,7 +37,7 @@ fn main() -> Result<()> {
         };
 
         match choice {
-            "Search" => search_db(),
+            "Search" => search_db(&mut client),
             "Quit" => break,
             _ => {
                 println!("Invalid Input");
@@ -48,6 +48,11 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn search_db() {
-
+fn search_db(client: &mut Client) {
+    let choice = Text::new("Enter the chain you wish to search for:").prompt().unwrap();
+    for row in client.query("select distinct county, distinct state from chain where chain = $1", &[&choice.as_str()]).unwrap() {
+        let county: String = row.get(0);
+        let state: String = row.get(1);
+        println!("State: {}, County: {}", state, county);
+    }
 }
