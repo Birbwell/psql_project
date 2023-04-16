@@ -30,7 +30,6 @@ fn main() -> Result<()> {
     loop {
         let Ok(choice) = Select::new("Main Menu", vec![
             "Search For Correlation",
-            "Custom Query",
             "Quit"
         ]).prompt() else {
             break
@@ -38,7 +37,6 @@ fn main() -> Result<()> {
 
         match choice {
             "Search For Correlation" => search_db_for_correlation(&mut client),
-            "Custom Query" => custom_query(&mut client),
             "Quit" => break,
             _ => {
                 println!("Invalid Input");
@@ -77,23 +75,5 @@ fn search_db_for_correlation(client: &mut Client) {
             let corr: f64 = row.get(0);
             println!("{} | {}", choice, corr);
         }
-    }
-}
-
-fn custom_query(client: &mut Client) {
-    let Ok(query) = Text::new("Enter your query:").prompt() else {
-        return
-    };
-    let Ok(r) = client.query(&query, &[]) else {
-        println!("There was something wrong with your query");
-        return
-    };
-    for row in r {
-        let mut line = String::new();
-        for n in 0..row.len() {
-            let v: String = row.get(n);
-            line = format!("{} {}", line, v);
-        }
-        println!("{}", line);
     }
 }
