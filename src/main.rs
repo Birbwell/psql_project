@@ -74,6 +74,9 @@ fn search_db_for_correlation(client: &mut Client) {
         if choice == c {
             let corr: f64 = row.get(0);
             println!("{} | {}", choice, corr);
+            return
         }
     }
+
+    println!("There were no results for that query");
 }
