@@ -54,9 +54,9 @@ fn search_db_for_correlation(client: &mut Client) {
     };
 
     let query = "with chains as (
-      SELECT * from chain_count
-      WHERE chain_count.chain IN (SELECT cc.chain FROM chain_count AS cc group BY chain HAVING COUNT(*)>19)
-      AND chain_count.chain IN (SELECT cc.chain FROM (SELECT DISTINCT chain_count.chain AS chain, chain_count.count AS count FROM chain_count) AS cc GROUP BY chain HAVING COUNT(*)>1)
+        SELECT * from chain_count
+        WHERE chain_count.chain IN (SELECT cc.chain FROM chain_count AS cc group BY chain HAVING COUNT(*)>19)
+        AND chain_count.chain IN (SELECT cc.chain FROM (SELECT DISTINCT chain_count.chain AS chain, chain_count.count AS count FROM chain_count) AS cc GROUP BY chain HAVING COUNT(*)>1)
     )
     SELECT c, chain
     FROM (SELECT CORR(CAST(crime_1.crime_total AS DOUBLE PRECISION) / crime_1.population, chains.count) as c, chains.chain
