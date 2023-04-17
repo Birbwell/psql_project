@@ -20,7 +20,8 @@ fn main() -> Result<()> {
         match Client::connect(cred.as_str(), NoTls) {
             Ok(c) => break c,
             Err(e) => {
-                println!("There was an error: {:?}\nPlease try again.", e);
+                let t = e.as_db_error().unwrap().message();
+                println!("{}", t);
             }
         };
     };
