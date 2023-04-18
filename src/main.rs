@@ -5,7 +5,7 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 fn main() -> Result<()> {
     let mut client = loop {
-        let Ok(user) = Text::new("Enter the username:").prompt() else {
+        let Ok(user) = Text::new("Enter your psql username:").prompt() else {
             return Ok(())
         };
         let Ok(pass) = ({
