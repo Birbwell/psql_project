@@ -31,6 +31,7 @@ fn main() -> Result<()> {
     loop {
         let Ok(choice) = Select::new("Main Menu", vec![
             "Search For Correlation",
+            "Search By Crime",
             "Custom Query",
             "Quit"
         ]).prompt() else {
@@ -39,6 +40,7 @@ fn main() -> Result<()> {
 
         match choice {
             "Search For Correlation" => search_db_for_correlation(&mut client),
+            "Search By Crime" => search_by_crime(&mut client),
             "Custom Query" => custom_query(&mut client),
             "Quit" => break,
             _ => {
@@ -51,21 +53,14 @@ fn main() -> Result<()> {
 }
 
 fn search_db_for_correlation(client: &mut Client) {
+    println!("Under Construction");
+    return;
+    
     let Ok(choice) = Text::new("Enter the chain you're looking for:").prompt() else {
         return
     };
 
-    let query = "with chains as (
-        SELECT * from chain_count
-        WHERE chain_count.chain IN (SELECT cc.chain FROM chain_count AS cc group BY chain HAVING COUNT(*)>19)
-        AND chain_count.chain IN (SELECT cc.chain FROM (SELECT DISTINCT chain_count.chain AS chain, chain_count.count AS count FROM chain_count) AS cc GROUP BY chain HAVING COUNT(*)>1)
-    )
-    SELECT c, chain
-    FROM (SELECT CORR(CAST(crime_1.crime_total AS DOUBLE PRECISION) / crime_1.population, chains.count) as c, chains.chain
-    FROM crime_1, chains
-    WHERE chains.county_id = crime_1.county_id
-    GROUP BY chains.chain
-    ORDER BY c desc) as corrs";
+    let query = "";
 
     let Ok(r) = client.query(query, &[]) else {
         println!("There was an issue running your query");
@@ -86,12 +81,12 @@ fn search_db_for_correlation(client: &mut Client) {
 
 fn custom_query(client: &mut Client) {
     let Ok(query) = Text::new("Enter your query:").prompt() else {
-        println!("There was an issue getting your query");
+        eprintln!("There was an issue getting your query");
         return
     };
 
     let Ok(r) = client.query(&query, &[]) else {
-        println!("There was an issue executing your query");
+        eprintln!("There was an issue executing your query");
         return
     };
 
@@ -140,4 +135,20 @@ fn capitalize(s: &str) -> String {
     let mut v = s.chars().collect::<Vec<char>>();
     v[0] = v[0].to_ascii_uppercase();
     v.into_iter().collect::<String>()
+}
+
+fn search_by_crime(client: &mut Client) {
+    let crimes = vec![
+        "Larceny",
+        "Burglary",
+        "Murder",
+        "Rape",
+        "Arson"
+    ];
+    let Ok(selected_crime) = Select::new("What type of crime?", crimes).prompt() else {
+        eprintln!("Something went wrong");
+        return
+    };
+
+    println!("Under Construction")
 }
