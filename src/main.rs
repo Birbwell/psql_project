@@ -72,6 +72,15 @@ fn search_db_for_correlation(client: &mut Client) {
         return
     };
 
+    // let r = match client.query(query, &[]) {
+    //     Ok(v) => v,
+    //     Err(e) => {
+    //         println!("There was an issue executing your query");
+    //         println!("{:?}", e);
+    //         return
+    //     }
+    // };
+
     for row in r {
         let c: String = row.get(1);
         if choice == c {
@@ -91,14 +100,22 @@ fn custom_query(client: &mut Client) {
     };
 
     let Ok(r) = client.query(&query, &[]) else {
-        println!("There was an issue executing your query");
+        println!("There was an issue executing your query, or that syntax is not supported");
         return
     };
+
+    if r.len() == 0 {
+        let Ok(_) = client.execute(&query, &[]) else {
+            println!("Something went wrong with your statement");
+            return
+        };
+        return
+    }
 
     let col = r[0].columns();
     let mut line = String::new();
     for c in col {
-        line = format!("{} {}", line, capitalize(c.name()));
+        line = format!("{} {}", line, c.name());
     }
     line.push('\n');
     for _ in 0..line.len() {
@@ -110,7 +127,7 @@ fn custom_query(client: &mut Client) {
         let mut i = 0;
         for c in col {
             match *c.type_() {
-                Type::VARCHAR | Type::TEXT => {
+                Type::VARCHAR | Type::TEXT | Type::NAME => {
                     line = format!("{} {}", line, row.get::<usize, String>(i))
                 },
                 Type::INT2 => {
@@ -128,16 +145,14 @@ fn custom_query(client: &mut Client) {
                 Type::FLOAT8 => {
                     line = format!("{} {}", line, row.get::<usize, f64>(i));
                 },
-                _ => println!("Not Yet Implemented! {}", *c.type_())
+                Type::NUMERIC => {
+                    println!("Sorry, but due to the nature of Numeric types, this query will fail");
+                    return
+                }
+                _ => println!("Type not yet implemented: {}", *c.type_())
             }
             i += 1;
         }
         println!("{}\n", line)
     }
-}
-
-fn capitalize(s: &str) -> String {
-    let mut v = s.chars().collect::<Vec<char>>();
-    v[0] = v[0].to_ascii_uppercase();
-    v.into_iter().collect::<String>()
 }
