@@ -95,11 +95,7 @@ fn custom_query(client: &mut Client) {
     };
 
     let Ok(r) = client.query(&query, &[]) else {
-<<<<<<< HEAD
-        println!("There was an issue executing your query, or that syntax is not supported");
-=======
         eprintln!("There was an issue executing your query");
->>>>>>> 04380d106c294837fc0ccab21e7969110727ed51
         return
     };
 
@@ -155,8 +151,6 @@ fn custom_query(client: &mut Client) {
         println!("{}\n", line)
     }
 }
-<<<<<<< HEAD
-=======
 
 fn capitalize(s: &str) -> String {
     let mut v = s.chars().collect::<Vec<char>>();
@@ -179,4 +173,3 @@ fn search_by_crime(client: &mut Client) {
 
     println!("Under Construction")
 }
->>>>>>> 04380d106c294837fc0ccab21e7969110727ed51
