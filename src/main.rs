@@ -82,13 +82,13 @@ fn fetch_top_ten_restaurants(client: &mut Client) {
         _ => "crime_total",
     };
 
-    let Ok(b) = Select::new("Show Best/Worst?", vec!["Best", "Worst"]).prompt() else {
+    let Ok(b) = Select::new("Show Most Positive/Negative Correlation?", vec!["Positive", "Negative"]).prompt() else {
         return
     };
 
     let best = match b {
-        "Best" => "ASC",
-        "Worst" => "DESC",
+        "Negative" => "ASC",
+        "Positive" => "DESC",
         _ => "ASC",
     };
 
@@ -124,7 +124,10 @@ fn fetch_top_ten_restaurants(client: &mut Client) {
         return
     };
 
-    println!("Rank: Chain | Correlation to Crime ({})\n", selected_c);
+    let header = format!("Rank: Chain | Correlation to Crime ({})", selected_c);
+
+    println!("{}", header);
+    println!("{:-^1$}", "", header.len());
     let mut idx = 1;
     for row in r {
         let chain: String = row.get(0);
@@ -207,7 +210,9 @@ fn fetch_specific_correlation(client: &mut Client) {
         return;
     }
 
-    println!("Chain | Correlation to Crime ({})\n", selected_c);
+    let header = format!("Chain | Correlation to Crime ({})", selected_c);
+    println!("{}", header);
+    println!("{:-^1$}", "", header.len());
     for row in r {
         let chain: String = row.get(0);
         let corr: f64 = row.get(1);
@@ -226,58 +231,53 @@ fn custom_query(client: &mut Client) {
 
     let Ok(r) = client.query(&query, &[]) else {
         eprintln!("There was an issue executing your query");
-        eprintln!("Note: This application is only for querying. Statements that modify the tables are not allowed");
+        eprintln!("Note: This application is only for querying. Statements that create/modify tables, or change the search path are not allowed.\n");
         return
     };
 
     if r.len() == 0 {
         eprintln!("There was an issue executing your query");
-        eprintln!("Note: This application is only for querying. Statements that modify or create tables are not allowed");
+        eprintln!("Note: This application is only for querying. Statements that create/modify tables, or change the search pathare not allowed.\n");
         return;
     }
 
     let col = r[0].columns();
-    let mut line = String::new();
-    for c in col {
-        line = format!("{} | {}", line, c.name());
-    }
-    line.push('\n');
-    for _ in 0..line.len() {
-        line.push('-');
-    }
-    println!("{}", line);
+    let col_names = col.iter().map(|f| f.name()).collect::<Vec<&str>>();
+    let header = col_names.join(" | ");
+    println!("{}", header);
+    println!("{:-^1$}", "", header.len());
     for row in &r {
-        let mut line = String::new();
+        let mut line = Vec::<String>::new();
         let mut i = 0;
         for c in col {
             match *c.type_() {
                 Type::VARCHAR | Type::TEXT | Type::NAME => {
-                    line = format!("{} | {}", line, row.get::<usize, String>(i))
+                    line.push(row.get::<usize, String>(i));
                 }
                 Type::INT2 => {
-                    line = format!("{} | {}", line, row.get::<usize, i16>(i));
+                    line.push(format!("{}", row.get::<usize, i16>(i)));
                 }
                 Type::INT4 => {
-                    line = format!("{} | {}", line, row.get::<usize, i32>(i));
+                    line.push(format!("{}", row.get::<usize, i32>(i)));
                 }
                 Type::INT8 => {
-                    line = format!("{} | {}", line, row.get::<usize, i64>(i));
+                    line.push(format!("{}", row.get::<usize, i64>(i)));
                 }
                 Type::FLOAT4 => {
-                    line = format!("{} | {}", line, row.get::<usize, f32>(i));
+                    line.push(format!("{}", row.get::<usize, f32>(i)));
                 }
                 Type::FLOAT8 => {
-                    line = format!("{} | {}", line, row.get::<usize, f64>(i));
+                    line.push(format!("{}", row.get::<usize, i64>(i)));
                 }
                 Type::NUMERIC => {
-                    println!("Sorry, but due to the nature of Numeric types, this query will fail");
-                    return;
+                    eprintln!("Sorry, but due to the nature of Numeric types, this query will fail");
+                    return
                 }
                 _ => println!("Type not yet implemented: {}", *c.type_()),
             }
             i += 1;
         }
-        println!("{}", line)
+        println!("{}", line.join(" | "));
     }
     println!();
 }
