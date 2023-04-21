@@ -124,7 +124,7 @@ fn fetch_top_ten_restaurants(client: &mut Client) {
         return
     };
 
-    println!("Position: Chain | Correlation to Crime ({})\n", selected_c);
+    println!("Rank: Chain | Correlation to Crime ({})\n", selected_c);
     let mut idx = 1;
     for row in r {
         let chain: String = row.get(0);
