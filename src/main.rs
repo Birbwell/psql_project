@@ -281,8 +281,9 @@ fn custom_query(client: &mut Client) {
             }
             i += 1;
         }
-        println!("{}\n", line)
+        println!("{}", line)
     }
+    println!();
 }
 
 fn capitalize(s: &str) -> String {
