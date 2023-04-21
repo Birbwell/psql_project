@@ -66,7 +66,6 @@ fn fetch_top_ten_restaurants(client: &mut Client) {
         "Arson",
     ];
     let Ok(selected_c) = Select::new("What type of crime?", crimes).prompt() else {
-        eprintln!("Something went wrong");
         return
     };
 
@@ -84,7 +83,6 @@ fn fetch_top_ten_restaurants(client: &mut Client) {
     };
 
     let Ok(b) = Select::new("Show Best/Worst?", vec!["Best", "Worst"]).prompt() else {
-        eprintln!("Something went wrong");
         return
     };
 
@@ -126,7 +124,7 @@ fn fetch_top_ten_restaurants(client: &mut Client) {
         return
     };
 
-    println!("Chain | Correlation to Crime ({})\n", selected_c);
+    println!("Position: Chain | Correlation to Crime ({})\n", selected_c);
     let mut idx = 1;
     for row in r {
         let chain: String = row.get(0);
@@ -150,7 +148,6 @@ fn fetch_specific_correlation(client: &mut Client) {
         "Arson",
     ];
     let Ok(selected_c) = Select::new("What type of crime?", crimes).prompt() else {
-        eprintln!("Something went wrong");
         return
     };
 
@@ -193,7 +190,6 @@ fn fetch_specific_correlation(client: &mut Client) {
     );
 
     let Ok(mut spec) = Text::new("What chain are you looking for:").prompt() else {
-        println!("An error has occured");
         return
     };
 
