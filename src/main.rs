@@ -262,7 +262,7 @@ fn custom_query(client: &mut Client) {
     let col_names = col.iter().map(|f| f.name()).collect::<Vec<&str>>();
     let mut table_body = vec![];
     for row in &r {
-        let mut line = Vec::<CellStruct>::new();
+        let mut line = vec![];
         let mut i = 0;
         for c in col {
             match *c.type_() {
@@ -284,11 +284,10 @@ fn custom_query(client: &mut Client) {
                 Type::FLOAT8 => {
                     line.push(format!("{}", row.get::<usize, i64>(i)).cell());
                 }
-                Type::NUMERIC => {
-                    eprintln!("Sorry, but due to the nature of Numeric types, this query will fail");
+                _ => {
+                    eprintln!("Type not yet implemented: {}", *c.type_());
                     return
-                }
-                _ => println!("Type not yet implemented: {}", *c.type_()),
+                },
             }
             i += 1;
         }
@@ -310,7 +309,7 @@ fn capitalize(s: &str) -> String {
         .split_ascii_whitespace()
         .map(|f| f.chars().collect::<Vec<char>>())
         .collect::<Vec<Vec<char>>>();
-    let mut ret = Vec::<String>::new();
+    let mut ret = vec![];
     for word in v {
         ret.push(match &word[..] {
             [first, rest @ ..] => {
