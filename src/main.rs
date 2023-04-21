@@ -1,5 +1,6 @@
 use inquire::{Password, Select, Text};
 use postgres::{types::Type, Client, NoTls};
+use cli_table::*;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -124,18 +125,25 @@ fn fetch_top_ten_restaurants(client: &mut Client) {
         return
     };
 
-    let header = format!("Rank: Chain | Correlation to Crime ({})", selected_c);
-
-    println!("{}", header);
-    println!("{:-^1$}", "", header.len());
+    let mut table_body = vec![];
     let mut idx = 1;
     for row in r {
         let chain: String = row.get(0);
         let corr: f64 = row.get(1);
-        println!("{}: {} | {}", idx, chain, corr);
+        table_body.push(vec![idx.cell(), chain.cell(), corr.cell()]);
         idx += 1;
     }
-    println!();
+    let table = table_body
+        .table()
+        .title(vec![
+            "Rank".cell().bold(true),
+            "Chain".cell().bold(true),
+            format!("Correlation to Crime ({})", selected_c).cell().bold(true),
+        ])
+        .bold(true);
+
+    let display = table.display().unwrap();
+    println!("{}", display);
 }
 
 fn fetch_specific_correlation(client: &mut Client) {
@@ -207,18 +215,27 @@ fn fetch_specific_correlation(client: &mut Client) {
 
     if r.len() == 0 {
         println!("There are no chains by that given name");
-        return;
+        return
     }
 
-    let header = format!("Chain | Correlation to Crime ({})", selected_c);
-    println!("{}", header);
-    println!("{:-^1$}", "", header.len());
+    let mut table_body = vec![];
     for row in r {
         let chain: String = row.get(0);
         let corr: f64 = row.get(1);
-        println!("{} | {}", chain, corr);
+        table_body.push(vec![chain.cell(), corr.cell()]);
     }
-    println!();
+
+    let table = table_body
+        .table()
+        .title(vec![
+            "Chain".cell().bold(true),
+            format!("Correlation to Crime ({})", selected_c).cell().bold(true),
+        ])
+        .bold(true);
+
+    let table_display = table.display().unwrap();
+
+    println!("{}", table_display);
 }
 
 fn custom_query(client: &mut Client) {
@@ -243,31 +260,29 @@ fn custom_query(client: &mut Client) {
 
     let col = r[0].columns();
     let col_names = col.iter().map(|f| f.name()).collect::<Vec<&str>>();
-    let header = col_names.join(" | ");
-    println!("{}", header);
-    println!("{:-^1$}", "", header.len());
+    let mut table_body = vec![];
     for row in &r {
-        let mut line = Vec::<String>::new();
+        let mut line = Vec::<CellStruct>::new();
         let mut i = 0;
         for c in col {
             match *c.type_() {
                 Type::VARCHAR | Type::TEXT | Type::NAME => {
-                    line.push(row.get::<usize, String>(i));
+                    line.push(row.get::<usize, String>(i).cell());
                 }
                 Type::INT2 => {
-                    line.push(format!("{}", row.get::<usize, i16>(i)));
+                    line.push(format!("{}", row.get::<usize, i16>(i)).cell());
                 }
                 Type::INT4 => {
-                    line.push(format!("{}", row.get::<usize, i32>(i)));
+                    line.push(format!("{}", row.get::<usize, i32>(i)).cell());
                 }
                 Type::INT8 => {
-                    line.push(format!("{}", row.get::<usize, i64>(i)));
+                    line.push(format!("{}", row.get::<usize, i64>(i)).cell());
                 }
                 Type::FLOAT4 => {
-                    line.push(format!("{}", row.get::<usize, f32>(i)));
+                    line.push(format!("{}", row.get::<usize, f32>(i)).cell());
                 }
                 Type::FLOAT8 => {
-                    line.push(format!("{}", row.get::<usize, i64>(i)));
+                    line.push(format!("{}", row.get::<usize, i64>(i)).cell());
                 }
                 Type::NUMERIC => {
                     eprintln!("Sorry, but due to the nature of Numeric types, this query will fail");
@@ -277,9 +292,17 @@ fn custom_query(client: &mut Client) {
             }
             i += 1;
         }
-        println!("{}", line.join(" | "));
+        table_body.push(line);
     }
-    println!();
+
+    let table = table_body
+        .table()
+        .title(col_names.iter().map(|f| f.cell().bold(true)).collect::<Vec<CellStruct>>())
+        .bold(true);
+
+    let table_display = table.display().unwrap();
+
+    println!("{}", table_display);
 }
 
 fn capitalize(s: &str) -> String {
