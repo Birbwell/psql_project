@@ -17,7 +17,7 @@ fn main() -> Result<()> {
         };
         let cred = format!("postgres://{}:{}@codd.mines.edu:5433/csci403", user, pass);
 
-        match Client::connect(cred.as_str(), NoTls) {
+        match Client::connect(&cred, NoTls) {
             Ok(c) => break c,
             Err(e) => {
                 let t = e.as_db_error().unwrap().message();
