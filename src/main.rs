@@ -94,7 +94,7 @@ fn fetch_top_ten_restaurants(client: &mut Client) {
         _ => "ASC",
     };
 
-    println!("Querying...\n");
+    println!("Querying. This may take a bit...\n");
     let query = format!(
         "SELECT *
     FROM (
