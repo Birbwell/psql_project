@@ -1,5 +1,5 @@
 use inquire::{Password, Select, Text};
-use postgres::{Client, NoTls, types::Type};
+use postgres::{types::Type, Client, NoTls};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -9,7 +9,7 @@ fn main() -> Result<()> {
             return Ok(())
         };
         let Ok(pass) = ({
-            let mut p = Password::new("Enter the password:");
+            let mut p = Password::new("Enter your psql password:");
             p.enable_confirmation = false;
             p.prompt()
         }) else {
@@ -21,7 +21,7 @@ fn main() -> Result<()> {
             Ok(c) => break c,
             Err(e) => {
                 let t = e.as_db_error().unwrap().message();
-                println!("{}", t);
+                println!("Error: {}", t);
             }
         };
     };
@@ -30,8 +30,8 @@ fn main() -> Result<()> {
 
     loop {
         let Ok(choice) = Select::new("Main Menu", vec![
-            "Search For Correlation",
-            "Search By Crime",
+            "Get Top-10 Chains",
+            "Search For Specific Correlation",
             "Custom Query",
             "Quit"
         ]).prompt() else {
@@ -39,8 +39,8 @@ fn main() -> Result<()> {
         };
 
         match choice {
-            "Search For Correlation" => search_db_for_correlation(&mut client),
-            "Search By Crime" => search_by_crime(&mut client),
+            "Get Top-10 Chains" => fetch_top_ten_restaurants(&mut client),
+            "Search For Specific Correlation" => fetch_specific_correlation(&mut client),
             "Custom Query" => custom_query(&mut client),
             "Quit" => break,
             _ => {
@@ -49,43 +49,175 @@ fn main() -> Result<()> {
         };
     }
 
+    client.close()?;
     Ok(())
 }
 
-fn search_db_for_correlation(client: &mut Client) {
-    println!("Under Construction");
-    return;
-    
-    let Ok(choice) = Text::new("Enter the chain you're looking for:").prompt() else {
+fn fetch_top_ten_restaurants(client: &mut Client) {
+    let crimes = vec![
+        "All Crime",
+        "Murder",
+        "Rape",
+        "Robbery",
+        "Aggravated Assault",
+        "Burglary",
+        "Larceny",
+        "Motor Vehicle Theft",
+        "Arson",
+    ];
+    let Ok(selected_c) = Select::new("What type of crime?", crimes).prompt() else {
+        eprintln!("Something went wrong");
         return
     };
 
-    let query = "";
+    let selected_crime = match selected_c {
+        "All Crime" => "crime_total",
+        "Murder" => "murder",
+        "Rape" => "rape",
+        "Robbery" => "robbery",
+        "Aggravated Assault" => "assault",
+        "Burglary" => "burglary",
+        "Larceny" => "larceny",
+        "Motor Vehicle Theft" => "motor_theft",
+        "Arson" => "arson",
+        _ => "crime_total",
+    };
 
-    let Ok(r) = client.query(query, &[]) else {
+    let Ok(b) = Select::new("Show Best/Worst?", vec!["Best", "Worst"]).prompt() else {
+        eprintln!("Something went wrong");
+        return
+    };
+
+    let best = match b {
+        "Best" => "ASC",
+        "Worst" => "DESC",
+        _ => "ASC",
+    };
+
+    println!("Querying...\n");
+    let query = format!(
+        "SELECT *
+    FROM (
+        SELECT name,
+        (
+            SELECT CORR(
+                COALESCE((
+                SELECT count
+                FROM chain_count AS count
+                WHERE count.chain_id = chain_total_count.chain_id
+                AND count.county_id = county.id
+                ), 0),
+                CAST(crime_1.{} AS DOUBLE PRECISION) / crime_1.population
+            ) AS c
+            FROM county
+            JOIN crime_1 ON county.id = crime_1.county_id
+        ) AS corr
+        FROM chain_total_count
+        JOIN chain_name ON chain_total_count.chain_id = chain_name.id
+        WHERE chain_total_count.total_count > 10
+        ORDER BY corr {}
+    ) AS c
+    FETCH FIRST 10 ROWS ONLY",
+        selected_crime, best
+    );
+
+    let Ok(r) = client.query(&query, &[]) else {
         println!("There was an issue running your query");
         return
     };
 
-    // let r = match client.query(query, &[]) {
-    //     Ok(v) => v,
-    //     Err(e) => {
-    //         println!("There was an issue executing your query");
-    //         println!("{:?}", e);
-    //         return
-    //     }
-    // };
-
+    println!("Chain | Correlation to Crime ({})\n", selected_c);
+    let mut idx = 1;
     for row in r {
-        let c: String = row.get(1);
-        if choice == c {
-            let corr: f64 = row.get(0);
-            println!("{} | {}", choice, corr);
-            return
-        }
+        let chain: String = row.get(0);
+        let corr: f64 = row.get(1);
+        println!("{}: {} | {}", idx, chain, corr);
+        idx += 1;
+    }
+    println!();
+}
+
+fn fetch_specific_correlation(client: &mut Client) {
+    let crimes = vec![
+        "All Crime",
+        "Murder",
+        "Rape",
+        "Robbery",
+        "Aggravated Assault",
+        "Burglary",
+        "Larceny",
+        "Motor Vehicle Theft",
+        "Arson",
+    ];
+    let Ok(selected_c) = Select::new("What type of crime?", crimes).prompt() else {
+        eprintln!("Something went wrong");
+        return
+    };
+
+    let selected_crime = match selected_c {
+        "All Crime" => "crime_total",
+        "Murder" => "murder",
+        "Rape" => "rape",
+        "Robbery" => "robbery",
+        "Aggravated Assault" => "assault",
+        "Burglary" => "burglary",
+        "Larceny" => "larceny",
+        "Motor Vehicle Theft" => "motor_theft",
+        "Arson" => "arson",
+        _ => "crime_total",
+    };
+
+    let query = format!(
+        "SELECT *
+    FROM (
+        SELECT name,
+        (
+            SELECT CORR(
+                COALESCE((
+                SELECT count
+                FROM chain_count AS count
+                WHERE count.chain_id = chain_total_count.chain_id
+                AND count.county_id = county.id
+                ), 0),
+                CAST(crime_1.{} AS DOUBLE PRECISION) / crime_1.population
+            ) AS c
+            FROM county
+            JOIN crime_1 ON county.id = crime_1.county_id
+        ) AS corr
+        FROM chain_total_count
+        JOIN chain_name ON chain_total_count.chain_id = chain_name.id
+        WHERE chain_total_count.total_count > 10 AND name = $1
+        ORDER BY corr desc
+    ) AS c",
+        selected_crime
+    );
+
+    let Ok(mut spec) = Text::new("What chain are you looking for:").prompt() else {
+        println!("An error has occured");
+        return
+    };
+
+    spec = capitalize(&spec);
+
+    println!("Querying...\n");
+
+    let Ok(r) = client.query(&query, &[&spec]) else {
+        println!("There was an issue running your query");
+        return
+    };
+
+    if r.len() == 0 {
+        println!("There are no chains by that given name");
+        return;
     }
 
-    println!("There were no results for that query");
+    println!("Chain | Correlation to Crime ({})\n", selected_c);
+    for row in r {
+        let chain: String = row.get(0);
+        let corr: f64 = row.get(1);
+        println!("{} | {}", chain, corr);
+    }
+    println!();
 }
 
 fn custom_query(client: &mut Client) {
@@ -94,17 +226,18 @@ fn custom_query(client: &mut Client) {
         return
     };
 
+    println!("Querying...\n");
+
     let Ok(r) = client.query(&query, &[]) else {
         eprintln!("There was an issue executing your query");
+        eprintln!("Note: This application is only for querying. Statements that modify the tables are not allowed");
         return
     };
 
     if r.len() == 0 {
-        let Ok(_) = client.execute(&query, &[]) else {
-            println!("Something went wrong with your statement");
-            return
-        };
-        return
+        eprintln!("There was an issue executing your query");
+        eprintln!("Note: This application is only for querying. Statements that modify or create tables are not allowed");
+        return;
     }
 
     let col = r[0].columns();
@@ -123,28 +256,28 @@ fn custom_query(client: &mut Client) {
         for c in col {
             match *c.type_() {
                 Type::VARCHAR | Type::TEXT | Type::NAME => {
-                    line = format!("{} {}", line, row.get::<usize, String>(i))
-                },
+                    line = format!("{} | {}", line, row.get::<usize, String>(i))
+                }
                 Type::INT2 => {
-                    line = format!("{} {}", line, row.get::<usize, i16>(i));
-                },
+                    line = format!("{} | {}", line, row.get::<usize, i16>(i));
+                }
                 Type::INT4 => {
-                    line = format!("{} {}", line, row.get::<usize, i32>(i));
-                },
+                    line = format!("{} | {}", line, row.get::<usize, i32>(i));
+                }
                 Type::INT8 => {
-                    line = format!("{} {}", line, row.get::<usize, i64>(i));
-                },
+                    line = format!("{} | {}", line, row.get::<usize, i64>(i));
+                }
                 Type::FLOAT4 => {
-                    line = format!("{} {}", line, row.get::<usize, f32>(i));
-                },
+                    line = format!("{} | {}", line, row.get::<usize, f32>(i));
+                }
                 Type::FLOAT8 => {
-                    line = format!("{} {}", line, row.get::<usize, f64>(i));
-                },
+                    line = format!("{} | {}", line, row.get::<usize, f64>(i));
+                }
                 Type::NUMERIC => {
                     println!("Sorry, but due to the nature of Numeric types, this query will fail");
-                    return
+                    return;
                 }
-                _ => println!("Type not yet implemented: {}", *c.type_())
+                _ => println!("Type not yet implemented: {}", *c.type_()),
             }
             i += 1;
         }
@@ -153,23 +286,23 @@ fn custom_query(client: &mut Client) {
 }
 
 fn capitalize(s: &str) -> String {
-    let mut v = s.chars().collect::<Vec<char>>();
-    v[0] = v[0].to_ascii_uppercase();
-    v.into_iter().collect::<String>()
-}
-
-fn search_by_crime(client: &mut Client) {
-    let crimes = vec![
-        "Larceny",
-        "Burglary",
-        "Murder",
-        "Rape",
-        "Arson"
-    ];
-    let Ok(selected_crime) = Select::new("What type of crime?", crimes).prompt() else {
-        eprintln!("Something went wrong");
-        return
-    };
-
-    println!("Under Construction")
+    let v = s
+        .split_ascii_whitespace()
+        .map(|f| f.chars().collect::<Vec<char>>())
+        .collect::<Vec<Vec<char>>>();
+    let mut ret = Vec::<String>::new();
+    for word in v {
+        ret.push(match &word[..] {
+            [first, rest @ ..] => {
+                let t = first.to_ascii_uppercase();
+                let r = rest
+                    .iter()
+                    .map(|f| f.to_ascii_lowercase())
+                    .collect::<String>();
+                format!("{}{}", t, r)
+            }
+            _ => "".to_owned(),
+        })
+    }
+    ret.join(" ")
 }
