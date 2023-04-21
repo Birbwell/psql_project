@@ -239,7 +239,7 @@ fn custom_query(client: &mut Client) {
     let col = r[0].columns();
     let mut line = String::new();
     for c in col {
-        line = format!("{} {}", line, c.name());
+        line = format!("{} | {}", line, c.name());
     }
     line.push('\n');
     for _ in 0..line.len() {
