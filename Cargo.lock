@@ -681,7 +681,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "psql_project"
+name = "psql_access_application"
 version = "1.0.0"
 dependencies = [
  "cli-table",

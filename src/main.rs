@@ -132,7 +132,7 @@ fn fetch_top_ten_restaurants(client: &mut Client) {
             "FIRST" if idx <= 10 => {
                 table_body.push(vec![idx.cell(), chain.cell(), corr.cell()]);
                 idx += 1;
-                if idx >= 10 {
+                if idx > 10 {
                     break
                 }
             },
