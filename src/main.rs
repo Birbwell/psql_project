@@ -1,8 +1,8 @@
 use inquire::{Password, Select, Text};
-use postgres::{types::Type, Client, NoTls};
+use postgres::{types::Type, Client, NoTls, Error};
 use cli_table::*;
 
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+type Result<T> = std::result::Result<T, Error>;
 
 fn main() -> Result<()> {
     let mut client = loop {
@@ -50,8 +50,7 @@ fn main() -> Result<()> {
         };
     }
 
-    client.close()?;
-    Ok(())
+    client.close()
 }
 
 fn fetch_top_ten_restaurants(client: &mut Client) {
@@ -83,14 +82,14 @@ fn fetch_top_ten_restaurants(client: &mut Client) {
         _ => "crime_total",
     };
 
-    let Ok(b) = Select::new("Show Most Positive/Negative Correlation?", vec!["Positive", "Negative"]).prompt() else {
+    let Ok(b) = Select::new("Show Most Highest/Lowest Correlation?", vec!["Highest", "Lowest"]).prompt() else {
         return
     };
 
     let best = match b {
-        "Negative" => "ASC",
-        "Positive" => "DESC",
-        _ => "ASC",
+        "Highest" => "FIRST",
+        "Lowest" => "LAST",
+        _ => "FIRST",
     };
 
     println!("Querying. This may take a bit...\n");
@@ -114,24 +113,37 @@ fn fetch_top_ten_restaurants(client: &mut Client) {
         FROM chain_total_count
         JOIN chain_name ON chain_total_count.chain_id = chain_name.id
         WHERE chain_total_count.total_count > 10
-        ORDER BY corr {}
-    ) AS c
-    FETCH FIRST 10 ROWS ONLY",
-        selected_crime, best
+        ORDER BY corr DESC
+    ) AS c",
+        selected_crime,
     );
 
     let Ok(r) = client.query(&query, &[]) else {
-        println!("There was an issue running your query");
+        println!("There was an issue running your query\n");
         return
     };
 
     let mut table_body = vec![];
     let mut idx = 1;
-    for row in r {
+    for row in &r {
         let chain: String = row.get(0);
         let corr: f64 = row.get(1);
-        table_body.push(vec![idx.cell(), chain.cell(), corr.cell()]);
-        idx += 1;
+        match best {
+            "FIRST" if idx <= 10 => {
+                table_body.push(vec![idx.cell(), chain.cell(), corr.cell()]);
+                idx += 1;
+                if idx >= 10 {
+                    break
+                }
+            },
+            "LAST" if idx >= r.len() - 10 => {
+                table_body.push(vec![idx.cell(), chain.cell(), corr.cell()]);
+                idx += 1;
+            },
+            _ => {
+                idx += 1;
+            }
+        }
     }
     let table = table_body
         .table()
@@ -175,6 +187,12 @@ fn fetch_specific_correlation(client: &mut Client) {
         _ => "crime_total",
     };
 
+    let Ok(mut spec) = Text::new("What chain are you looking for:").prompt() else {
+        return
+    };
+
+    spec = spec.trim().to_string();
+
     let query = format!(
         "SELECT *
     FROM (
@@ -194,21 +212,15 @@ fn fetch_specific_correlation(client: &mut Client) {
         ) AS corr
         FROM chain_total_count
         JOIN chain_name ON chain_total_count.chain_id = chain_name.id
-        WHERE chain_total_count.total_count > 10 AND name = $1
-        ORDER BY corr desc
+        WHERE chain_total_count.total_count > 10
+        ORDER BY corr DESC
     ) AS c",
-        selected_crime
+        selected_crime,
     );
 
-    let Ok(mut spec) = Text::new("What chain are you looking for:").prompt() else {
-        return
-    };
+    println!("Querying. This may take a bit...\n");
 
-    spec = capitalize(&spec);
-
-    println!("Querying...\n");
-
-    let Ok(r) = client.query(&query, &[&spec]) else {
+    let Ok(r) = client.query(&query, &[]) else {
         println!("There was an issue running your query");
         return
     };
@@ -219,15 +231,20 @@ fn fetch_specific_correlation(client: &mut Client) {
     }
 
     let mut table_body = vec![];
+    let mut rank = 1;
     for row in r {
         let chain: String = row.get(0);
         let corr: f64 = row.get(1);
-        table_body.push(vec![chain.cell(), corr.cell()]);
+        if chain.to_ascii_lowercase() == spec.to_ascii_lowercase() {
+            table_body.push(vec![rank.cell(), chain.cell(), corr.cell()]);
+        }
+        rank += 1;
     }
 
     let table = table_body
         .table()
         .title(vec![
+            "Rank".cell().bold(true),
             "Chain".cell().bold(true),
             format!("Correlation to Crime ({})", selected_c).cell().bold(true),
         ])
@@ -240,7 +257,6 @@ fn fetch_specific_correlation(client: &mut Client) {
 
 fn custom_query(client: &mut Client) {
     let Ok(query) = Text::new("Enter your query:").prompt() else {
-        eprintln!("There was an issue getting your query");
         return
     };
 
@@ -302,26 +318,4 @@ fn custom_query(client: &mut Client) {
     let table_display = table.display().unwrap();
 
     println!("{}", table_display);
-}
-
-fn capitalize(s: &str) -> String {
-    let v = s
-        .split_ascii_whitespace()
-        .map(|f| f.chars().collect::<Vec<char>>())
-        .collect::<Vec<Vec<char>>>();
-    let mut ret = vec![];
-    for word in v {
-        ret.push(match &word[..] {
-            [first, rest @ ..] => {
-                let t = first.to_ascii_uppercase();
-                let r = rest
-                    .iter()
-                    .map(|f| f.to_ascii_lowercase())
-                    .collect::<String>();
-                format!("{}{}", t, r)
-            }
-            _ => "".to_owned(),
-        })
-    }
-    ret.join(" ")
 }
